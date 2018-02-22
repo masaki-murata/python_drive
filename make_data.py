@@ -14,16 +14,6 @@ def load_data():
         image = np.array( Image.open(path_to_train_image % image_id) )
         print(image.shape)
         
-#def crop_data(image_id, crop_pos, crop_shape=(64,64)):
-#    path_to_train_image = "../training/images/%d_training.tif" % image_id
-#    path_to_train_manual = "../training/1st_manual/%d_manual1.gif" % image_id
-#    image = np.array( Image.open(path_to_train_image) )
-#    manual = np.array( Image.open(path_to_train_manual) )
-#    y_min, y_max = crop_pos[0], crop_pos[0]+crop_shape[0]
-#    x_min, x_max = crop_pos[1], crop_pos[1]+crop_shape[1]
-#    
-#    return image[y_min:y_max, x_min:x_max], manual[y_min:y_max, x_min:x_max]
-
 
 def make_dataset(data_size=2**22,
                  image_ids=list(range(20)),
@@ -36,9 +26,9 @@ def make_dataset(data_size=2**22,
     path_to_label = "../IntermediateData/label.npy"
     
     
-    images = np.zeros( ((18,)+data_shape+(3,)), dtype=np.uint8 )
-    manuals = np.zeros( ((18,)+data_shape+(1,)), dtype=np.uint8 )
-    for image_id in range(image_ids):
+    images = np.zeros( ((len(image_ids),)+data_shape+(3,)), dtype=np.uint8 )
+    manuals = np.zeros( ((len(image_ids),)+data_shape+(1,)), dtype=np.uint8 )
+    for image_id in image_ids:
         images[image_id] = np.array( Image.open(path_to_train_image % (image_id+21)) )
         manual = np.array( Image.open(path_to_train_manual % (image_id+21)) )
         manuals[image_id] = manual.reshape(manual.shape+(1,))
@@ -47,7 +37,7 @@ def make_dataset(data_size=2**22,
     label = np.zeros( ((data_size,)+crop_shape+(1,)), dtype=np.uint8 )
     for count in range(data_size):
         print(count,",", end="")
-        image_id = np.random.randint(18)
+        image_id = np.random.choice(image_ids)
         y = np.random.randint(data_shape[0]-crop_shape[0])
         x = np.random.randint(data_shape[1]-crop_shape[1])
 #        crop_pos=(y,x)
