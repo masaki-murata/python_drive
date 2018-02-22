@@ -26,7 +26,7 @@ def load_data():
 
 
 def make_dataset(data_size=2**22,
-                 image_ids=len(range(18)),
+                 image_ids=list(range(20)),
                  data_shape=(584,565),
                  crop_shape=(64,64)
                  ):
