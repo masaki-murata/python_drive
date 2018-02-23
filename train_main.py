@@ -8,10 +8,22 @@ Created on Thu Feb 22 21:22:59 2018
 
 import numpy as np
 from PIL import Image
-import os
+import os, datetime
 import seunet_model, seunet_main
 from keras.optimizers import Adam
 from keras.callbacks import CSVLogger, EarlyStopping, ModelCheckpoint
+from keras.utils.training_utils import multi_gpu_model
+
+import tensorflow as tf
+from keras.backend.tensorflow_backend import set_session
+config = tf.ConfigProto(
+    gpu_options=tf.GPUOptions(
+        visible_device_list="2,3", # specify GPU number
+        allow_growth=True
+    )
+)
+    
+set_session(tf.Session(config=config))
 
 def load_image_manual(image_ids=np.arange(18),
                       data_shape=(584,565),
@@ -91,11 +103,19 @@ def train(train_ids=np.arange(18),
           epochs=256,
           data_shape=(584,565),
           crop_shape=(64,64),
+          nb_gpus=1,
           ):
     
+    steps_per_epoch=data_size_per_epoch//batch_size
     # set our model
     img_dims, output_dims = crop_shape+(3,), crop_shape+(1,)
-    model = seunet_model.seunet(img_dims, output_dims)
+    model_single_gpu = seunet_model.seunet(img_dims, output_dims)
+    print(nb_gpus)
+    if int(nb_gpus) > 1:
+        model_multi_gpu = multi_gpu_model(model_single_gpu, gpus=nb_gpus)
+    else:
+        model_multi_gpu = model_single_gpu
+
     
     # load data
     train_images, train_manuals = load_image_manual(image_ids=train_ids,data_shape=data_shape,crop_shape=crop_shape)
@@ -111,35 +131,52 @@ def train(train_ids=np.arange(18),
     train_gen = batch_iter(images=train_images,
                            manuals=train_manuals, 
                            crop_shape=crop_shape,
-                           steps_per_epoch=data_size_per_epoch//batch_size,
+                           steps_per_epoch=steps_per_epoch,
                            batch_size=batch_size,
                            )
 
-    path_to_save_model = "../output/ep{epoch:04d}-valloss{val_loss:.4f}.h5"
-    callbacks = []
-    callbacks.append(ModelCheckpoint(path_to_save_model, monitor='val_loss', save_best_only=False))
+#    path_to_save_model = "../output/ep{epoch:04d}-valloss{val_loss:.4f}.h5"
+    path_to_cnn_format = "./output/mm%02ddd%02d_%02d/"
+    # make a folder to save history and models
+    now = datetime.datetime.now()
+    for count in range(10):
+        path_to_cnn = path_to_cnn_format % (now.month, now.day, count)
+        if not os.path.exists(path_to_cnn):
+            os.mkdir(path_to_cnn)
+            break
+    path_to_save_model = path_to_cnn_format + "model_epoch=%3d.h5"
+    path_to_save_weights = path_to_cnn_format + "weights_epoch=%3d.h5"
+    
+#    callbacks = []
+#    callbacks.append(ModelCheckpoint(path_to_save_model, monitor='val_loss', save_best_only=False))
 #    callbacks.append(CSVLogger("log%03d.csv" % counter))
 #    callbacks.append(EarlyStopping(monitor='val_loss', min_delta=0.0001 , patience=patience))
     opt_generator = Adam(lr=1e-3, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
 #    model.compile(loss='binary_crossentropy', optimizer=opt_generator)
-    model.compile(loss=seunet_main.mean_dice_coef_loss, optimizer=opt_generator)
+    model_multi_gpu.compile(loss=seunet_main.mean_dice_coef_loss, optimizer=opt_generator)
     
-    history = model.fit_generator(train_gen,
-                                 steps_per_epoch=steps_per_epoch,
-                                 epochs=epochs,
-#                                 callbacks=callbacks,
-                                 validation_data=(val_data,val_label)
-                                 )
+    for epoch in range(epochs):
+        model_multi_gpu.fit_generator(train_gen,
+                                      steps_per_epoch=steps_per_epoch,
+                                      epochs=epochs,
+#                                      callbacks=callbacks,
+                                      validation_data=(val_data,val_label)
+                                      )
+        if epoch>0 and epoch//32==0:
+            model_single_gpu.save(path_to_save_model % (epoch))
+            model_single_gpu.save_weights(path_to_save_weights % (epoch))
+
 
 def main():
     train(train_ids=np.arange(18),
           validation_ids=np.arange(18,20),
           val_data_size = 2048,
           batch_size=32,
-          steps_per_epoch=2**14,
+          data_size_per_epoch=2**14,
           epochs=256,
           data_shape=(584,565),
           crop_shape=(64,64),
+          nb_gpus=1
           )    
 if __name__ == '__main__':
     main()
