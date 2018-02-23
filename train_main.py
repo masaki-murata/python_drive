@@ -117,7 +117,7 @@ def train(train_ids=np.arange(18),
 #    callbacks.append(CSVLogger("log%03d.csv" % counter))
 #    callbacks.append(EarlyStopping(monitor='val_loss', min_delta=0.0001 , patience=patience))
     opt_generator = Adam(lr=1e-3, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
-    model.compile(loss=seunet_main.mean_dice_coef_loss, optimizer=opt_generator)
+    model.compile(loss='binary_crossentropy', optimizer=opt_generator)
     
     history = model.fit_generator(train_gen,
                                  steps_per_epoch=steps_per_epoch,
