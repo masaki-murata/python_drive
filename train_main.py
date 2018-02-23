@@ -27,6 +27,7 @@ def load_image_manual(image_ids=np.arange(18),
         image_id = image_ids[x]
         images[x] = np.array( Image.open(path_to_train_image % (image_id+21)) )
         manual = np.array( Image.open(path_to_train_manual % (image_id+21)) )
+        manual[manual>0] = 1
         manuals[x] = manual.reshape(manual.shape+(1,))
         
     return images, manuals
@@ -55,6 +56,8 @@ def make_validation_dataset(validation_ids=np.arange(18,20),
             x = np.random.randint(images.shape[2]-crop_shape[1])
             data[count] = images[image_id, y:y+crop_shape[0], x:x+crop_shape[1],:]
             label[count] = manuals[image_id, y:y+crop_shape[0], x:x+crop_shape[1],:]
+        np.save(path_to_validation_data, data)
+        np.save(path_to_validation_label, label)
                 
     return data, label        
 
@@ -83,7 +86,8 @@ def train(train_ids=np.arange(18),
           validation_ids=np.arange(18,20),
           val_data_size = 2048,
           batch_size=32,
-          steps_per_epoch=2**14,
+          data_size_per_epoch=2**14,
+#          steps_per_epoch=2**14,
           epochs=256,
           data_shape=(584,565),
           crop_shape=(64,64),
@@ -107,7 +111,7 @@ def train(train_ids=np.arange(18),
     train_gen = batch_iter(images=train_images,
                            manuals=train_manuals, 
                            crop_shape=crop_shape,
-                           steps_per_epoch=steps_per_epoch,
+                           steps_per_epoch=data_size_per_epoch//batch_size,
                            batch_size=batch_size,
                            )
 
@@ -117,7 +121,8 @@ def train(train_ids=np.arange(18),
 #    callbacks.append(CSVLogger("log%03d.csv" % counter))
 #    callbacks.append(EarlyStopping(monitor='val_loss', min_delta=0.0001 , patience=patience))
     opt_generator = Adam(lr=1e-3, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
-    model.compile(loss='binary_crossentropy', optimizer=opt_generator)
+#    model.compile(loss='binary_crossentropy', optimizer=opt_generator)
+    model.compile(loss=seunet_main.mean_dice_coef_loss, optimizer=opt_generator)
     
     history = model.fit_generator(train_gen,
                                  steps_per_epoch=steps_per_epoch,
