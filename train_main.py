@@ -64,7 +64,7 @@ def object_level_dice_2d(y_true, y_pred): # y_true.shape = (画像のindex a, y,
             for j in range(num_labels_pred):
                 dice_sg_tilde[i] = max( dice_sg_tilde[i], dice_coeff(g_tilde[i], s[j]) )
         
-        dice_object += 0.5 * (np.sum(omega*dice_sg) + np.sum(omega_tilde*dice_sg_tilde))
+        dice_object += 0.5 * ( np.sum(omega*dice_sg) + np.sum(omega_tilde*dice_sg_tilde) )
     
     return dice_object
     
