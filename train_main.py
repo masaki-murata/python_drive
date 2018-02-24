@@ -13,6 +13,8 @@ import seunet_model, seunet_main
 from keras.optimizers import Adam
 from keras.callbacks import CSVLogger, EarlyStopping, ModelCheckpoint
 from keras.utils.training_utils import multi_gpu_model
+import keras.backend as K
+from scipy.ndimage import label
 
 import tensorflow as tf
 from keras.backend.tensorflow_backend import set_session
@@ -25,6 +27,47 @@ config = tf.ConfigProto(
     
 set_session(tf.Session(config=config))
 
+def object_level_dice_2d(y_true, y_pred): # y_true.shape = (画像のindex a, y, x)
+    def dice_coeff(g ,s):
+        return 2*(np.sum(g*s)+1) / (np.sum(g)+np.sum(s)+1)
+    
+    s_sum, g_tilde_sum = np.sum(y_pred), np.sum(y_true) # omega, omega_tilde の分子
+    
+    dice_object=0
+    for a in range(len(y_true)):
+        labeled_true, num_labels_true = label(y_true[a])
+        labeled_pred, num_labels_pred = label(y_pred[a])
+        
+        # initialize
+        g_tilde = np.zeros( (num_labels_true,)+y_true.shape[1:], dtype=np.uint8 )
+        s = np.zeros( (num_labels_pred,)+y_true.shape[1:], dtype=np.uint8 )
+        omega = np.zeros(num_labels_pred, dtype=np.uint8)
+        omega_tilde = np.zeros(num_labels_true, dtype=np.uint8)
+        # set g_tilde and s
+        for i in range(num_labels_true):
+            g_tilde[i][labeled_true==i+1] = 1
+            omega_tilde[i] = np.sum(g_tilde[i]) / g_tilde_sum
+        for i in range(num_labels_pred):
+            s[i][labeled_pred==i+1] = 1
+            omega[i] = np.sum(s[i]) / s_sum
+        
+        # compute Dice(G, S)
+        dice_sg = np.zeros(num_labels_pred, dtype=np.uint8)
+        for i in range(num_labels_pred):
+            dice_sg[i] = 0
+            for j in range(num_labels_true):
+                dice_sg[i] = max( dice_sg[i], dice_coeff(g_tilde[j], s[i]) )
+        # compute Dice(G_tilde, S_tilde)
+        dice_sg_tilde = np.zeros(num_labels_true, dtype=np.uint8)
+        for i in range(num_labels_true):
+            dice_sg_tilde[i] = 0
+            for j in range(num_labels_pred):
+                dice_sg_tilde[i] = max( dice_sg_tilde[i], dice_coeff(g_tilde[i], s[j]) )
+        
+        dice_object += 0.5 * (np.sum(omega*dice_sg) + np.sum(omega_tilde*dice_sg_tilde))
+    
+    return dice_object
+    
 def load_image_manual(image_ids=np.arange(18),
                       data_shape=(584,565),
                       crop_shape=(64,64),
