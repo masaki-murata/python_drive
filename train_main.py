@@ -132,8 +132,15 @@ def batch_iter(images=np.array([]), # (画像数、584, 565, 3)
                 image_id = np.random.randint(images.shape[0])
                 y = np.random.randint(images.shape[1]-crop_shape[0])
                 x = np.random.randint(images.shape[2]-crop_shape[1])
-                data[count] = images[image_id, y:y+crop_shape[0], x:x+crop_shape[1],:]
-                label[count] = manuals[image_id, y:y+crop_shape[0], x:x+crop_shape[1],:]
+#                data[count] = images[image_id, y:y+crop_shape[0], x:x+crop_shape[1],:]
+#                label[count] = manuals[image_id, y:y+crop_shape[0], x:x+crop_shape[1],:]
+                data_crop = images[image_id, y:y+crop_shape[0], x:x+crop_shape[1],:]       
+                label_crop = manuals[image_id, y:y+crop_shape[0], x:x+crop_shape[1],:]
+                if np.random.choice([True,False]):
+                    data_crop, label_crop = np.flip(data_crop, axis=1), np.flip(label_crop, axis=1)
+                if np.random.choice([True,False]):
+                    data_crop, label_crop = np.flip(data_crop, axis=2), np.flip(label_crop, axis=2)
+                data[count], label[count] = data_crop, label_crop
             yield data, label
             
 
@@ -179,7 +186,7 @@ def train(train_ids=np.arange(18),
                            )
 
 #    path_to_save_model = "../output/ep{epoch:04d}-valloss{val_loss:.4f}.h5"
-    path_to_cnn_format = "./output/mm%02ddd%02d_%02d/"
+    path_to_cnn_format = "../output/mm%02ddd%02d_%02d/"
     # make a folder to save history and models
     now = datetime.datetime.now()
     for count in range(10):
