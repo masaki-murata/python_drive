@@ -212,7 +212,7 @@ def train(train_ids=np.arange(18),
 #                                      callbacks=callbacks,
                                       validation_data=(val_data,val_label)
                                       )
-        if epoch>0 and epoch//32==0:
+        if epoch>0 and epoch%32==0:
             model_single_gpu.save(path_to_save_model % (epoch))
             model_single_gpu.save_weights(path_to_save_weights % (epoch))
 
