@@ -14,7 +14,6 @@ from keras.optimizers import Adam
 from keras.callbacks import CSVLogger, EarlyStopping, ModelCheckpoint
 from keras.utils.training_utils import multi_gpu_model
 import keras.backend as K
-from scipy.ndimage import label
 
 import tensorflow as tf
 from keras.backend.tensorflow_backend import set_session
@@ -57,24 +56,24 @@ def make_validation_dataset(validation_ids=np.arange(18,20),
     path_to_validation_label = "../IntermediateData/validation_label.npy"
     if load==True and os.path.exists(path_to_validation_data) and os.path.exists(path_to_validation_label):
         data = np.load(path_to_validation_data)
-        label = np.load(path_to_validation_label)
+        labels = np.load(path_to_validation_label)
     else:
         images, manuals = load_image_manual(image_ids=validation_ids,
                                             data_shape=data_shape,
                                             crop_shape=crop_shape,
                                             )
         data = np.zeros( (val_data_size,)+crop_shape+(3,), dtype=np.uint8 )
-        label = np.zeros( (val_data_size,)+crop_shape+(1,), dtype=np.uint8 )
+        labels = np.zeros( (val_data_size,)+crop_shape+(1,), dtype=np.uint8 )
         for count in range(val_data_size):
             image_id = np.random.randint(images.shape[0])
             y = np.random.randint(images.shape[1]-crop_shape[0])
             x = np.random.randint(images.shape[2]-crop_shape[1])
             data[count] = images[image_id, y:y+crop_shape[0], x:x+crop_shape[1],:]
-            label[count] = manuals[image_id, y:y+crop_shape[0], x:x+crop_shape[1],:]
+            labels[count] = manuals[image_id, y:y+crop_shape[0], x:x+crop_shape[1],:]
         np.save(path_to_validation_data, data)
-        np.save(path_to_validation_label, label)
+        np.save(path_to_validation_label, labels)
                 
-    return data, label        
+    return data, labels        
 
 
 def batch_iter(images=np.array([]), # (画像数、584, 565, 3)
@@ -87,7 +86,7 @@ def batch_iter(images=np.array([]), # (画像数、584, 565, 3)
     while True:
         for step in range(steps_per_epoch):
             data = np.zeros( (batch_size,)+crop_shape+(3,), dtype=np.uint8 )
-            label = np.zeros( (batch_size,)+crop_shape+(1,), dtype=np.uint8 )
+            labels = np.zeros( (batch_size,)+crop_shape+(1,), dtype=np.uint8 )
             for count in range(batch_size):
                 image_id = np.random.randint(images.shape[0])
                 y = np.random.randint(images.shape[1]-crop_shape[0])
@@ -100,8 +99,8 @@ def batch_iter(images=np.array([]), # (画像数、584, 565, 3)
                     data_crop, label_crop = np.flip(data_crop, axis=1), np.flip(label_crop, axis=1)
                 if np.random.choice([True,False]):
                     data_crop, label_crop = np.flip(data_crop, axis=2), np.flip(label_crop, axis=2)
-                data[count], label[count] = data_crop, label_crop
-            yield data, label
+                data[count], labels[count] = data_crop, label_crop
+            yield data, labels
             
 
 def train(train_ids=np.arange(18),
@@ -154,8 +153,8 @@ def train(train_ids=np.arange(18),
         if not os.path.exists(path_to_cnn):
             os.mkdir(path_to_cnn)
             break
-    path_to_save_model = path_to_cnn_format + "model_epoch=%3d.h5"
-    path_to_save_weights = path_to_cnn_format + "weights_epoch=%3d.h5"
+    path_to_save_model = path_to_cnn + "model_epoch=%03d.h5"
+    path_to_save_weights = path_to_cnn + "weights_epoch=%03d.h5"
     
 #    callbacks = []
 #    callbacks.append(ModelCheckpoint(path_to_save_model, monitor='val_loss', save_best_only=False))
@@ -165,7 +164,7 @@ def train(train_ids=np.arange(18),
 #    model.compile(loss='binary_crossentropy', optimizer=opt_generator)
     model_multi_gpu.compile(loss=seunet_main.mean_dice_coef_loss, optimizer=opt_generator)
     
-    for epoch in range(epochs):
+    for epoch in range(1,epochs+1):
         model_multi_gpu.fit_generator(train_gen,
                                       steps_per_epoch=steps_per_epoch,
                                       epochs=1,
@@ -173,6 +172,9 @@ def train(train_ids=np.arange(18),
 #                                      callbacks=callbacks,
                                       validation_data=(val_data,val_label)
                                       )
+        print('Epoch %s/%s done' % (epoch, epochs))
+        print("")
+        
         if epoch>0 and epoch % 32==0:
             print(epoch)
             model_single_gpu.save(path_to_save_model % (epoch))

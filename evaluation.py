@@ -8,10 +8,12 @@ Created on Mon Feb 26 10:51:14 2018
 import numpy as np
 from keras.utils.training_utils import multi_gpu_model
 import keras
+import seunet_model
+from scipy.ndimage import label
 
 
-def sensitivity_specificity(path_to_model,
-                            crop_size=(64,64),
+def sensitivity_specificity(path_to_model_weights,
+                            crop_shape=(64,64),
                             threshold=0.5,
                             batch_size=32,
                             nb_gpus=1,
@@ -19,9 +21,11 @@ def sensitivity_specificity(path_to_model,
     path_to_validation_data = "../IntermediateData/validation_data.npy"
     path_to_validation_label = "../IntermediateData/validation_label.npy"
     data = np.load(path_to_validation_data)
-    label = np.load(path_to_validation_label)
+    labels = np.load(path_to_validation_label)
     
-    model_single_gpu = keras.models.load_model(path_to_model)
+    img_dims, output_dims = crop_shape+(3,), crop_shape+(1,)
+    model_single_gpu = seunet_model.seunet(img_dims, output_dims)
+    model_single_gpu.load_weights(path_to_model_weights)
     if int(nb_gpus) > 1:
         model_multi_gpu = multi_gpu_model(model_single_gpu, gpus=nb_gpus)
     else:
@@ -31,8 +35,8 @@ def sensitivity_specificity(path_to_model,
     predicted[predicted>threshold] = 1
     predicted[predicted<=threshold] = 0
     
-    sensitivity = predicted[(predicted==1) & (label==1)].size / float(label[label==1].size)
-    specificity = predicted[(predicted==0) & (label==0)].size / float(label[label==0].size)
+    sensitivity = predicted[(predicted==1) & (labels==1)].size / float(labels[labels==1].size)
+    specificity = predicted[(predicted==0) & (labels==0)].size / float(labels[labels==0].size)
 
     return sensitivity, specificity
 
@@ -77,3 +81,18 @@ def object_level_dice_2d(y_true, y_pred): # y_true.shape = (画像のindex a, y,
         dice_object += 0.5 * ( np.sum(omega*dice_sg) + np.sum(omega_tilde*dice_sg_tilde) )
     
     return dice_object
+
+
+def main():
+    path_to_model_weights = "../output/mm02dd26_01/weights_epoch=32.h5"
+    sensitivity, specificity = sensitivity_specificity(path_to_model_weights,
+                                                       crop_shape=(64,64),
+                                                       threshold=0.5,
+                                                       batch_size=32,
+                                                       nb_gpus=1,
+                                                       )    
+    print(sensitivity, specificity)
+    
+    
+if __name__ == '__main__':
+    main()
