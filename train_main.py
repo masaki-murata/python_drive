@@ -83,22 +83,34 @@ def batch_iter(images=np.array([]), # (画像数、584, 565, 3)
 #               image_ids=np.arange(20),
                batch_size=32,
                ):
+        
+    manuals = manuals.reshape(manuals.shape[:-1])
     while True:
         for step in range(steps_per_epoch):
             data = np.zeros( (batch_size,)+crop_shape+(3,), dtype=np.uint8 )
             labels = np.zeros( (batch_size,)+crop_shape+(1,), dtype=np.uint8 )
             for count in range(batch_size):
                 image_id = np.random.randint(images.shape[0])
-                y = np.random.randint(images.shape[1]-crop_shape[0])
-                x = np.random.randint(images.shape[2]-crop_shape[1])
+                theta = np.random.randint(360)
+                (h, w) = crop_shape # w は横、h は縦
+                c, s = np.abs(np.cos(np.deg2rad(theta))), np.abs(np.sin(np.deg2rad(theta)))
+                (H, W) = (int(s*w + c*h), int(c*w + s*h)) #最終的に切り出したい画像に内接する四角形の辺の長さ
+                y, x = np.random.randint(images.shape[1] - H + 1), np.random.randint(images.shape[2] - W + 1)
+#                y = np.random.randint(images.shape[1]-crop_shape[0])
+#                x = np.random.randint(images.shape[2]-crop_shape[1])
 #                data[count] = images[image_id, y:y+crop_shape[0], x:x+crop_shape[1],:]
 #                label[count] = manuals[image_id, y:y+crop_shape[0], x:x+crop_shape[1],:]
-                data_crop = images[image_id, y:y+crop_shape[0], x:x+crop_shape[1],:]       
-                label_crop = manuals[image_id, y:y+crop_shape[0], x:x+crop_shape[1],:]
+#                data_crop = images[image_id, y:y+crop_shape[0], x:x+crop_shape[1],:]       
+#                label_crop = manuals[image_id, y:y+crop_shape[0], x:x+crop_shape[1],:]
+                data_crop, label_crop = Image.fromarray(images[image_id, y:y+H, x:x+W,:]), Image.fromarray(manuals[image_id, y:y+H, x:x+W])
+                data_crop, label_crop = np.array(data_crop.rotate(-theta, expand=True)), np.array(label_crop.rotate(-theta, expand=True))
+                y_min, x_min = data_crop.shape[0]//2-h//2, data_crop.shape[1]//2-w//2
+                data_crop, label_crop = data_crop[y_min:y_min+h, x_min:x_min+w,:], label_crop[y_min:y_min+h, x_min:x_min+w]
+                label_crop = label_crop.reshape(label_crop.shape+(1,))
                 if np.random.choice([True,False]):
                     data_crop, label_crop = np.flip(data_crop, axis=1), np.flip(label_crop, axis=1)
-                if np.random.choice([True,False]):
-                    data_crop, label_crop = np.flip(data_crop, axis=2), np.flip(label_crop, axis=2)
+#                if np.random.choice([True,False]):
+#                    data_crop, label_crop = np.flip(data_crop, axis=2), np.flip(label_crop, axis=2)
                 data[count], labels[count] = data_crop, label_crop
             yield data, labels
             
