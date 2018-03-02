@@ -52,8 +52,8 @@ def make_validation_dataset(validation_ids=np.arange(18,20),
                             data_shape=(584,565),
                             crop_shape=(64,64),
                             ):
-    path_to_validation_data = "../IntermediateData/validation_data.npy"
-    path_to_validation_label = "../IntermediateData/validation_label.npy"
+    path_to_validation_data = "../IntermediateData/validation_data_crop%d%d.npy" % (crop_shape[0], crop_shape[1])
+    path_to_validation_label = "../IntermediateData/validation_label_crop%d%d.npy" % (crop_shape[0], crop_shape[1])
     if load==True and os.path.exists(path_to_validation_data) and os.path.exists(path_to_validation_label):
         data = np.load(path_to_validation_data)
         labels = np.load(path_to_validation_label)
@@ -201,7 +201,7 @@ def main():
           data_size_per_epoch=2**14,
           epochs=256,
           data_shape=(584,565),
-          crop_shape=(64,64),
+          crop_shape=(128,128),
           nb_gpus=1
           )    
 if __name__ == '__main__':
