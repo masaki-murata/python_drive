@@ -76,6 +76,9 @@ def make_validation_dataset(validation_ids=np.arange(18,20),
     return data, labels        
 
 
+def whole_slide_prediction():
+    
+
 def batch_iter(images=np.array([]), # (画像数、584, 565, 3)
                manuals=np.array([]), # (画像数、584, 565, 1)
                crop_shape=(64,64),
