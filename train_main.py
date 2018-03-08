@@ -29,7 +29,7 @@ set_session(tf.Session(config=config))
     
 def load_image_manual(image_ids=np.arange(18),
                       data_shape=(584,565),
-                      crop_shape=(64,64),
+#                      crop_shape=(64,64),
                       ):
     path_to_train_image = "../training/images/%d_training.tif" # % image_id
     path_to_train_manual = "../training/1st_manual/%d_manual1.gif" # % image_id
@@ -60,7 +60,7 @@ def make_validation_dataset(validation_ids=np.arange(18,20),
     else:
         images, manuals = load_image_manual(image_ids=validation_ids,
                                             data_shape=data_shape,
-                                            crop_shape=crop_shape,
+#                                            crop_shape=crop_shape,
                                             )
         data = np.zeros( (val_data_size,)+crop_shape+(3,), dtype=np.uint8 )
         labels = np.zeros( (val_data_size,)+crop_shape+(1,), dtype=np.uint8 )
@@ -75,9 +75,6 @@ def make_validation_dataset(validation_ids=np.arange(18,20),
                 
     return data, labels        
 
-
-def whole_slide_prediction():
-    
 
 def batch_iter(images=np.array([]), # (画像数、584, 565, 3)
                manuals=np.array([]), # (画像数、584, 565, 1)
@@ -142,7 +139,7 @@ def train(train_ids=np.arange(18),
 
     
     # load data
-    train_images, train_manuals = load_image_manual(image_ids=train_ids,data_shape=data_shape,crop_shape=crop_shape)
+    train_images, train_manuals = load_image_manual(image_ids=train_ids,data_shape=data_shape)
 #    validation_images, validation_manuals = \
 #        load_image_manual(image_ids=validation_ids,data_shape=data_shape,crop_shape=crop_shape)
     val_data, val_label = make_validation_dataset(validation_ids=validation_ids,
