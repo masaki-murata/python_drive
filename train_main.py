@@ -27,7 +27,7 @@ config = tf.ConfigProto(
 set_session(tf.Session(config=config))
 
     
-def load_image_manual(image_ids=np.arange(18),
+def load_image_manual(image_ids=np.arange(20,39),
                       data_shape=(584,565),
 #                      crop_shape=(64,64),
                       ):
@@ -39,14 +39,14 @@ def load_image_manual(image_ids=np.arange(18),
     manuals = np.zeros( (image_ids.shape+data_shape+(1,)), dtype=np.uint8 )
     for x in range(image_ids.size):
         image_id = image_ids[x]
-        images[x] = np.array( Image.open(path_to_train_image % (image_id+21)) )
-        manual = np.array( Image.open(path_to_train_manual % (image_id+21)) )
+        images[x] = np.array( Image.open(path_to_train_image % (image_id)) )
+        manual = np.array( Image.open(path_to_train_manual % (image_id)) )
         manual[manual>0] = 1
         manuals[x] = manual.reshape(manual.shape+(1,))
         
     return images, manuals
 
-def make_validation_dataset(validation_ids=np.arange(18,20),
+def make_validation_dataset(validation_ids=np.arange(39,41),
                             load = True,
                             val_data_size = 2048,
                             data_shape=(584,565),
@@ -65,11 +65,11 @@ def make_validation_dataset(validation_ids=np.arange(18,20),
         data = np.zeros( (val_data_size,)+crop_shape+(3,), dtype=np.uint8 )
         labels = np.zeros( (val_data_size,)+crop_shape+(1,), dtype=np.uint8 )
         for count in range(val_data_size):
-            image_id = np.random.randint(images.shape[0])
+            image_num = np.random.randint(images.shape[0])
             y = np.random.randint(images.shape[1]-crop_shape[0])
             x = np.random.randint(images.shape[2]-crop_shape[1])
-            data[count] = images[image_id, y:y+crop_shape[0], x:x+crop_shape[1],:]
-            labels[count] = manuals[image_id, y:y+crop_shape[0], x:x+crop_shape[1],:]
+            data[count] = images[image_num, y:y+crop_shape[0], x:x+crop_shape[1],:]
+            labels[count] = manuals[image_num, y:y+crop_shape[0], x:x+crop_shape[1],:]
         np.save(path_to_validation_data, data)
         np.save(path_to_validation_label, labels)
                 
@@ -90,7 +90,7 @@ def batch_iter(images=np.array([]), # (画像数、584, 565, 3)
             data = np.zeros( (batch_size,)+crop_shape+(3,), dtype=np.uint8 )
             labels = np.zeros( (batch_size,)+crop_shape+(1,), dtype=np.uint8 )
             for count in range(batch_size):
-                image_id = np.random.randint(images.shape[0])
+                image_num = np.random.randint(images.shape[0])
                 theta = np.random.randint(360)
                 (h, w) = crop_shape # w は横、h は縦
                 c, s = np.abs(np.cos(np.deg2rad(theta))), np.abs(np.sin(np.deg2rad(theta)))
@@ -102,7 +102,7 @@ def batch_iter(images=np.array([]), # (画像数、584, 565, 3)
 #                label[count] = manuals[image_id, y:y+crop_shape[0], x:x+crop_shape[1],:]
 #                data_crop = images[image_id, y:y+crop_shape[0], x:x+crop_shape[1],:]       
 #                label_crop = manuals[image_id, y:y+crop_shape[0], x:x+crop_shape[1],:]
-                data_crop, label_crop = Image.fromarray(images[image_id, y:y+H, x:x+W,:]), Image.fromarray(manuals[image_id, y:y+H, x:x+W])
+                data_crop, label_crop = Image.fromarray(images[image_num, y:y+H, x:x+W,:]), Image.fromarray(manuals[image_num, y:y+H, x:x+W])
                 data_crop, label_crop = np.array(data_crop.rotate(-theta, expand=True)), np.array(label_crop.rotate(-theta, expand=True))
                 y_min, x_min = data_crop.shape[0]//2-h//2, data_crop.shape[1]//2-w//2
                 data_crop, label_crop = data_crop[y_min:y_min+h, x_min:x_min+w,:], label_crop[y_min:y_min+h, x_min:x_min+w]
@@ -115,7 +115,7 @@ def batch_iter(images=np.array([]), # (画像数、584, 565, 3)
             yield data, labels
             
 
-def train(train_ids=np.arange(18),
+def train(train_ids=np.arange(20,38),
           validation_ids=np.arange(18,20),
           val_data_size = 2048,
           batch_size=32,

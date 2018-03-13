@@ -106,25 +106,25 @@ def whole_slide_dice_coeff(path_to_model_weights,
     images, manuals = train_main.load_image_manual(image_ids=image_ids,
                                                    data_shape=data_shape,
                                                    )
-    def dice_coeff_wsi(image_id):
+    def dice_coeff_wsi(count_image):
         count = 0
         data_size = (1+data_shape[0]//crop_shape[0]) * (1+data_shape[1]//crop_shape[1])
         data = np.zeros( (data_size,)+crop_shape+(3,), dtype=np.uint8 )
         for y in range(0, data_shape[0], crop_shape[0]):
             for x in range(0, data_shape[1], crop_shape[1]):
-                data[count] = images[image_id, y:y+crop_shape[0], x:x+crop_shape[1],:]
+                data[count] = images[count_image, y:y+crop_shape[0], x:x+crop_shape[1],:]
                 count += 1
         predicted = np.round( model_multi_gpu.predict(data, batch_size=32) )
         sum_groundtruth = np.sum(predicted)
-        sum_predict = np.sum(images[image_id])
+        sum_predict = np.sum(images[count_image])
         dice_numerator = 0
         for count in range(data_size):
             dice_numerator += 2 * np.sum( np.data[count] * predicted[count] )
         return dice_numerator / (sum_groundtruth+sum_predict)
     
     dice_sum=0
-    for image_id in image_ids:
-        dice_sum += dice_coeff_wsi(image_id)
+    for count_image in range(len(image_ids)):
+        dice_sum += dice_coeff_wsi(count_image)
     
     return dice_sum / len(image_ids)
     
@@ -135,7 +135,7 @@ def whole_slide_accuracy(path_to_model_weights,
                          crop_shape=(64,64),
                          nb_gpus=1,
                          ):
-    path_to_mask = "../training/mask/%d_training_mask.gif"
+    path_to_mask = "../training/mask/%d_training_mask.gif" # % image_id
     
     def load_model(path_to_model_weights):
         img_dims, output_dims = crop_shape+(3,), crop_shape+(1,)
@@ -152,7 +152,9 @@ def whole_slide_accuracy(path_to_model_weights,
     images, manuals = train_main.load_image_manual(image_ids=image_ids,
                                                    data_shape=data_shape,
                                                    )
-
+    for count_image in range(len(image_ids)):
+        mask = np.array( Image.open(path_to_mask % (count_image)) )
+    
 
 def main():
     path_to_model_weights = "../output/mm02dd26_01/weights_epoch=32.h5"
