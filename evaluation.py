@@ -130,7 +130,7 @@ def whole_slide_dice_coeff(path_to_model_weights,
     
 
 def whole_slide_accuracy(path_to_model_weights,
-                         image_ids=np.arange(18,20),
+                         image_ids=np.arange(39,41),
                          data_shape=(584,565),
                          crop_shape=(64,64),
                          nb_gpus=1,
@@ -152,8 +152,27 @@ def whole_slide_accuracy(path_to_model_weights,
     images, manuals = train_main.load_image_manual(image_ids=image_ids,
                                                    data_shape=data_shape,
                                                    )
-    for count_image in range(len(image_ids)):
-        mask = np.array( Image.open(path_to_mask % (count_image)) )
+    
+    pixel_sum, true_sum = 0,0
+    mask = np.zeros( (image_ids.shape+data_shape+(1,)), dtype=np.uint8 )
+    for count_image in range(image_ids.size):
+        image_id = image_ids[count_image]
+        mask[count_image] = np.array( Image.open(path_to_mask % (image_id)) )
+        
+        data_size = (1+data_shape[0]//crop_shape[0]) * (1+data_shape[1]//crop_shape[1])
+        data = np.zeros( (data_size,)+crop_shape+(3,), dtype=np.uint8 )
+        count = 0
+        for y in range(0, data_shape[0], crop_shape[0]):
+            for x in range(0, data_shape[1], crop_shape[1]):
+                data[count] = images[count_image, y:y+crop_shape[0], x:x+crop_shape[1],:]
+                count += 1
+        predicted = np.round( model_multi_gpu.predict(data, batch_size=32) )
+        pixel_sum += np.sum(manuals[x][mask>0])
+        true_sum += np.sum(predicted[mask>0 & manuals[x]==predicted])
+    
+    return true_sum / float(pixel_sum)
+        
+    
     
 
 def main():
