@@ -89,17 +89,20 @@ def whole_slide_dice_coeff(path_to_model_weights,
                            crop_shape=(64,64),
                            nb_gpus=1,
                            ):
-    def dice_coeff(g ,s):
-        return 2*(np.sum(g*s)+1) / (np.sum(g)+np.sum(s)+1)
-
-    img_dims, output_dims = crop_shape+(3,), crop_shape+(1,)
-    model_single_gpu = seunet_model.seunet(img_dims, output_dims)
-    model_single_gpu.load_weights(path_to_model_weights)
-    if int(nb_gpus) > 1:
-        model_multi_gpu = multi_gpu_model(model_single_gpu, gpus=nb_gpus)
-    else:
-        model_multi_gpu = model_single_gpu
-        
+#    def dice_coeff(g ,s):
+#        return 2*(np.sum(g*s)+1) / (np.sum(g)+np.sum(s)+1)
+    def load_model(path_to_model_weights):
+        img_dims, output_dims = crop_shape+(3,), crop_shape+(1,)
+        model_single_gpu = seunet_model.seunet(img_dims, output_dims)
+        model_single_gpu.load_weights(path_to_model_weights)
+        if int(nb_gpus) > 1:
+            model_multi_gpu = multi_gpu_model(model_single_gpu, gpus=nb_gpus)
+        else:
+            model_multi_gpu = model_single_gpu
+        return model_multi_gpu
+    
+    model_multi_gpu = load_model(path_to_model_weights)
+    
     images, manuals = train_main.load_image_manual(image_ids=image_ids,
                                                    data_shape=data_shape,
                                                    )
@@ -110,18 +113,45 @@ def whole_slide_dice_coeff(path_to_model_weights,
         for y in range(0, data_shape[0], crop_shape[0]):
             for x in range(0, data_shape[1], crop_shape[1]):
                 data[count] = images[image_id, y:y+crop_shape[0], x:x+crop_shape[1],:]
-        predicted = model_multi_gpu.predict(data, batch_size=32)
-        return dice_coeff(predicted, manuals[image_id])
+                count += 1
+        predicted = np.round( model_multi_gpu.predict(data, batch_size=32) )
+        sum_groundtruth = np.sum(predicted)
+        sum_predict = np.sum(images[image_id])
+        dice_numerator = 0
+        for count in range(data_size):
+            dice_numerator += 2 * np.sum( np.data[count] * predicted[count] )
+        return dice_numerator / (sum_groundtruth+sum_predict)
     
-    dcw=0
+    dice_sum=0
     for image_id in image_ids:
-        dcw += dice_coeff_wsi(image_id)
+        dice_sum += dice_coeff_wsi(image_id)
     
-    return dcw / len(image_ids)
+    return dice_sum / len(image_ids)
     
-#        data = np.zeros( (val_data_size,)+crop_shape+(3,), dtype=np.uint8 )
-#        labels = np.zeros( (val_data_size,)+crop_shape+(1,), dtype=np.uint8 )
+
+def whole_slide_accuracy(path_to_model_weights,
+                         image_ids=np.arange(18,20),
+                         data_shape=(584,565),
+                         crop_shape=(64,64),
+                         nb_gpus=1,
+                         ):
+    path_to_mask = "../training/mask/%d_training_mask.gif"
     
+    def load_model(path_to_model_weights):
+        img_dims, output_dims = crop_shape+(3,), crop_shape+(1,)
+        model_single_gpu = seunet_model.seunet(img_dims, output_dims)
+        model_single_gpu.load_weights(path_to_model_weights)
+        if int(nb_gpus) > 1:
+            model_multi_gpu = multi_gpu_model(model_single_gpu, gpus=nb_gpus)
+        else:
+            model_multi_gpu = model_single_gpu
+        return model_multi_gpu
+    
+    model_multi_gpu = load_model(path_to_model_weights)
+    
+    images, manuals = train_main.load_image_manual(image_ids=image_ids,
+                                                   data_shape=data_shape,
+                                                   )
 
 
 def main():
