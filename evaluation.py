@@ -10,6 +10,7 @@ from keras.utils.training_utils import multi_gpu_model
 import keras
 import seunet_model, train_main
 from scipy.ndimage import label
+from PIL import Image
 
 
 def sensitivity_specificity(path_to_model_weights,
@@ -176,9 +177,9 @@ def whole_slide_accuracy(path_to_model_weights,
     
 
 def main():
-    path_to_model_weights = "../output/mm02dd26_01/weights_epoch=32.h5"
+    path_to_model_weights = "../output/mm03dd02_03/weights_epoch=064.h5"
     whole_slide_dice_coeff(path_to_model_weights,
-                           image_ids=np.arange(18,20),
+#                           image_ids=np.arange(18,20),
                            data_shape=(584,565),
                            crop_shape=(64,64),
                            nb_gpus=1,
@@ -189,7 +190,7 @@ def main():
 #                                                       batch_size=32,
 #                                                       nb_gpus=1,
 #                                                       )    
-    print(sensitivity, specificity)
+#    print(sensitivity, specificity)
     
     
 if __name__ == '__main__':
