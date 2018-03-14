@@ -56,7 +56,7 @@ def up_conv_block_seunet(x, x2, f, dropout=False):
 
     x3 = GlobalMaxPooling2D()(x2)
     x3 = Dense(channels_nb_bottleneck, activation='relu')(x3)
-    x3 = Dense(channels_nb, activation='sigmoid')(x3)
+    x3 = Dense(channels_nb, activation='sigmoid', activity_regularizer=regularizers.l1(0.01))(x3)
 
     y = Lambda(lambda x: attetion(x))([x2, x3])
 
