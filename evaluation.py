@@ -4,6 +4,11 @@ Created on Mon Feb 26 10:51:14 2018
 
 @author: murata
 """
+import os
+import matplotlib
+if os.name=='posix':
+    matplotlib.use("agg")
+import matplotlib.pyplot as plt
 
 import numpy as np
 from keras.utils.training_utils import multi_gpu_model
@@ -11,7 +16,21 @@ import keras
 import seunet_model, train_main
 from scipy.ndimage import label
 from PIL import Image
+import shutil
 
+
+def load_trained_seunet(path_to_model_weights,
+                        crop_shape,
+                        nb_gpus,
+                        ):
+    img_dims, output_dims = crop_shape+(3,), crop_shape+(1,)
+    model_single_gpu = seunet_model.seunet(img_dims, output_dims)
+    model_single_gpu.load_weights(path_to_model_weights)
+    if int(nb_gpus) > 1:
+        model_multi_gpu = multi_gpu_model(model_single_gpu, gpus=nb_gpus)
+    else:
+        model_multi_gpu = model_single_gpu
+    return model_multi_gpu
 
 def sensitivity_specificity(path_to_model_weights,
                             crop_shape=(64,64),
@@ -85,7 +104,7 @@ def object_level_dice_2d(y_true, y_pred): # y_true.shape = (画像のindex a, y,
 
 
 def whole_slide_dice_coeff(path_to_model_weights,
-                           image_ids=np.arange(18,20),
+                           image_ids=np.arange(39,41),
                            data_shape=(584,565),
                            crop_shape=(64,64),
                            nb_gpus=1,
@@ -109,18 +128,22 @@ def whole_slide_dice_coeff(path_to_model_weights,
                                                    )
     def dice_coeff_wsi(count_image):
         count = 0
-        data_size = (1+data_shape[0]//crop_shape[0]) * (1+data_shape[1]//crop_shape[1])
+#        data_size = (1+data_shape[0]//crop_shape[0]) * (1+data_shape[1]//crop_shape[1])
+        data_size = (data_shape[0]//crop_shape[0]) * (data_shape[1]//crop_shape[1])
+#        print(data_size)
         data = np.zeros( (data_size,)+crop_shape+(3,), dtype=np.uint8 )
-        for y in range(0, data_shape[0], crop_shape[0]):
-            for x in range(0, data_shape[1], crop_shape[1]):
+        labeled = np.zeros( (data_size,)+crop_shape+(1,), dtype=np.uint8 )
+        for y in range(0, data_shape[0]-crop_shape[0], crop_shape[0]):
+            for x in range(0, data_shape[1]-crop_shape[1], crop_shape[1]):
                 data[count] = images[count_image, y:y+crop_shape[0], x:x+crop_shape[1],:]
+                labeled[count] = manuals[count_image, y:y+crop_shape[0], x:x+crop_shape[1],:]
                 count += 1
         predicted = np.round( model_multi_gpu.predict(data, batch_size=32) )
-        sum_groundtruth = np.sum(predicted)
-        sum_predict = np.sum(images[count_image])
+        sum_groundtruth = np.sum(manuals[count_image])
+        sum_predict = np.sum(predicted)
         dice_numerator = 0
         for count in range(data_size):
-            dice_numerator += 2 * np.sum( np.data[count] * predicted[count] )
+            dice_numerator += 2 * np.sum( labeled[count] * predicted[count] )
         return dice_numerator / (sum_groundtruth+sum_predict)
     
     dice_sum=0
@@ -155,35 +178,108 @@ def whole_slide_accuracy(path_to_model_weights,
                                                    )
     
     pixel_sum, true_sum = 0,0
-    mask = np.zeros( (image_ids.shape+data_shape+(1,)), dtype=np.uint8 )
+#    mask = np.zeros( (image_ids.shape+data_shape+(1,)), dtype=np.uint8 )
     for count_image in range(image_ids.size):
         image_id = image_ids[count_image]
-        mask[count_image] = np.array( Image.open(path_to_mask % (image_id)) )
+        mask = np.array( Image.open(path_to_mask % (image_id)) )
+        mask = mask / np.amax(mask)
+        mask = mask.reshape(mask.shape+(1,))
         
-        data_size = (1+data_shape[0]//crop_shape[0]) * (1+data_shape[1]//crop_shape[1])
+        data_size = (data_shape[0]//crop_shape[0]) * (data_shape[1]//crop_shape[1])
         data = np.zeros( (data_size,)+crop_shape+(3,), dtype=np.uint8 )
+        labeled = np.zeros( (data_size,)+crop_shape+(1,), dtype=np.uint8 )
+        masked = np.zeros( (data_size,)+crop_shape+(1,), dtype=np.uint8 )
         count = 0
-        for y in range(0, data_shape[0], crop_shape[0]):
-            for x in range(0, data_shape[1], crop_shape[1]):
+        for y in range(0, data_shape[0]-crop_shape[0], crop_shape[0]):
+            for x in range(0, data_shape[1]-crop_shape[1], crop_shape[1]):
                 data[count] = images[count_image, y:y+crop_shape[0], x:x+crop_shape[1],:]
+                labeled[count] = manuals[count_image, y:y+crop_shape[0], x:x+crop_shape[1],:]
+                masked[count] = mask[y:y+crop_shape[0], x:x+crop_shape[1],:]
                 count += 1
         predicted = np.round( model_multi_gpu.predict(data, batch_size=32) )
-        pixel_sum += np.sum(manuals[x][mask>0])
-        true_sum += np.sum(predicted[mask>0 & manuals[x]==predicted])
-    
+        pixel_sum += float( mask[mask>0].size )
+        true_sum=0
+        for count in range(data_size):
+            true_sum += np.sum(masked[count]*labeled[count]*predicted[count] + masked[count]*(1-labeled[count])*(1-predicted[count]))
+#            labeled[count][labeled[count]==1 & predicted[count]==1].size
+           
     return true_sum / float(pixel_sum)
         
-    
-    
 
-def main():
-    path_to_model_weights = "../output/mm03dd02_03/weights_epoch=064.h5"
-    whole_slide_dice_coeff(path_to_model_weights,
-#                           image_ids=np.arange(18,20),
+def whole_slide_prediction(path_to_model_weights,
+                           image_id=38,
                            data_shape=(584,565),
                            crop_shape=(64,64),
                            nb_gpus=1,
-                           )
+                           batch_size=32,
+                           ):
+
+    path_to_mask = "../training/mask/%d_training_mask.gif" # % image_id
+    path_to_train_image = "../training/images/%d_training.tif" # % image_id
+
+    model = load_trained_seunet(path_to_model_weights, crop_shape, nb_gpus)
+    
+    image = np.array( Image.open(path_to_train_image % (image_id)) )
+    mask = np.array( Image.open(path_to_mask % (image_id)) )
+    mask = mask / np.amax(mask)
+    
+    data_size = int( np.ceil(data_shape[0]/float(crop_shape[0])) * np.ceil(data_shape[1]/float(crop_shape[1])) )
+    data = np.zeros( (data_size,)+crop_shape+(3,), dtype=np.uint8 )
+    count = 0
+    for y in range(0, data_shape[0], crop_shape[0]):
+        if y+crop_shape[0] > data_shape[0]:
+            y = data_shape[0]-crop_shape[0]
+        for x in range(0, data_shape[1], crop_shape[1]):
+            if x+crop_shape[1] > data_shape[1]:
+                x = data_shape[1]-crop_shape[1]
+            data[count] = image[y:y+crop_shape[0], x:x+crop_shape[1],:]
+            count += 1
+    crop_predicted = np.round( model.predict(data, batch_size=batch_size) )
+    
+    whole_slide_predicted = np.zeros(image.shape[:-1], dtype=np.int)
+    count = 0
+    for y in range(0, data_shape[0], crop_shape[0]):
+        if y+crop_shape[0] > data_shape[0]:
+            y = data_shape[0]-crop_shape[0]
+        for x in range(0, data_shape[1], crop_shape[1]):
+            if x+crop_shape[1] > data_shape[1]:
+                x = data_shape[1]-crop_shape[1]
+            whole_slide_predicted[y:y+crop_shape[0], x:x+crop_shape[1]] = crop_predicted[count].reshape(crop_shape)
+            count += 1
+            
+    return whole_slide_predicted*mask
+
+def main():
+    image_id=39
+    path_to_model_weights = "../output/mm03dd02_03/weights_epoch=064.h5"
+#    dice_coeff = whole_slide_dice_coeff(path_to_model_weights,
+##                                        image_ids=np.arange(18,20),
+#                                        data_shape=(584,565),
+#                                        crop_shape=(64,64),
+#                                        nb_gpus=1,
+#                                        )
+#    print(dice_coeff)
+#    acc = whole_slide_accuracy(path_to_model_weights,
+#                               image_ids=np.arange(39,41),
+#                               data_shape=(584,565),
+#                               crop_shape=(64,64),
+#                               nb_gpus=1,
+#                               )
+#    print(acc)    
+    whole_slide_predicted = whole_slide_prediction(path_to_model_weights,
+                                                   image_id=image_id,
+                                                   data_shape=(584,565),
+                                                   crop_shape=(64,64),
+                                                   nb_gpus=1,
+                                                   batch_size=32,
+                                                   )
+    print(whole_slide_predicted.shape)
+    print(np.unique(whole_slide_predicted))
+    if not os.path.exists(path_to_model_weights[:-3]+'/'):
+        os.makedirs(path_to_model_weights[:-3]+'/')
+    plt.imshow(whole_slide_predicted)
+    plt.savefig(path_to_model_weights[:-3]+'/'+str(image_id)+'.png')
+#    Image.fromarray(whole_slide_predicted).save(path_to_model_weights[:-3]+str(image_id)+'.gif')
 #    sensitivity, specificity = sensitivity_specificity(path_to_model_weights,
 #                                                       crop_shape=(64,64),
 #                                                       threshold=0.5,

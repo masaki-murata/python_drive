@@ -14,17 +14,20 @@ from keras.optimizers import Adam
 from keras.callbacks import CSVLogger, EarlyStopping, ModelCheckpoint
 from keras.utils.training_utils import multi_gpu_model
 import keras.backend as K
+import shutil
+
 
 import tensorflow as tf
 from keras.backend.tensorflow_backend import set_session
-config = tf.ConfigProto(
-    gpu_options=tf.GPUOptions(
-        visible_device_list="2,3", # specify GPU number
-        allow_growth=True
+if os.name=='posix':
+    config = tf.ConfigProto(
+        gpu_options=tf.GPUOptions(
+            visible_device_list="2,3", # specify GPU number
+            allow_growth=True
+        )
     )
-)
     
-set_session(tf.Session(config=config))
+    set_session(tf.Session(config=config))
 
     
 def load_image_manual(image_ids=np.arange(20,39),
@@ -165,8 +168,12 @@ def train(train_ids=np.arange(20,38),
         if not os.path.exists(path_to_cnn):
             os.mkdir(path_to_cnn)
             break
+    path_to_code = "./train_main.py"
+    path_to_code_moved = path_to_cnn + "train_main_used.py"
     path_to_save_model = path_to_cnn + "model_epoch=%03d.h5"
     path_to_save_weights = path_to_cnn + "weights_epoch=%03d.h5"
+    
+    shutil.copyfile(path_to_code, path_to_code_moved)
     
 #    callbacks = []
 #    callbacks.append(ModelCheckpoint(path_to_save_model, monitor='val_loss', save_best_only=False))
