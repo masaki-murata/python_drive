@@ -126,7 +126,7 @@ def train(train_ids=np.arange(20,38),
 #          steps_per_epoch=2**14,
           epochs=256,
           data_shape=(584,565),
-          crop_shape=(64,64),
+          crop_shape=(128,128),
           nb_gpus=1,
           ):
     
@@ -201,14 +201,14 @@ def train(train_ids=np.arange(20,38),
 
 
 def main():
-    train(train_ids=np.arange(18),
-          validation_ids=np.arange(18,20),
+    train(train_ids=np.arange(21,39),
+          validation_ids=np.arange(39,41),
           val_data_size = 2048,
           batch_size=32,
           data_size_per_epoch=2**14,
           epochs=256,
           data_shape=(584,565),
-          crop_shape=(128,128),
+          crop_shape=(64,64),
           nb_gpus=1
           )    
 if __name__ == '__main__':

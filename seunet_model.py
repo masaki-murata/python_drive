@@ -77,7 +77,7 @@ def up_conv_block_seunet(x, x2, f, dropout=False):
 
 def seunet(img_dims, output_dims):
 
-    filter_list =  [32, 32, 64, 128, 128] #[64, 64, 128, 128, 256, 256]  
+    filter_list =  [32, 32, 64, 128, 128, 128] #[32, 32, 64, 128, 128] #[64, 64, 128, 128, 256, 256]  
 
     unet_input = Input(shape=img_dims)
 
@@ -88,7 +88,7 @@ def seunet(img_dims, output_dims):
         encoder_layers.append(conv)
 
 
-    filter_list = [64, 32, 32, 32] #[128, 128, 64, 64, 64]
+    filter_list = [64, 32, 32, 32, 32] #[64, 32, 32, 32] #[128, 128, 64, 64, 64]
     
     decoder_layers = [up_conv_block_seunet(encoder_layers[-1], encoder_layers[-2],
                                        filter_list[0], dropout=True)]
