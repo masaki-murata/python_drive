@@ -249,6 +249,9 @@ def whole_slide_prediction(path_to_model_weights,
             
     return whole_slide_predicted*mask
 
+def whole_slide_accuracy():
+    
+    
 def main():
     image_id=39
     path_to_model_weights = "../output/mm03dd22_01/weights_epoch=224.h5"
