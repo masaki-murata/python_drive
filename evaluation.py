@@ -251,7 +251,7 @@ def whole_slide_prediction(path_to_model_weights,
 
 def main():
     image_id=39
-    path_to_model_weights = "../output/mm03dd15_03/weights_epoch=256.h5"
+    path_to_model_weights = "../output/mm03dd22_01/weights_epoch=224.h5"
 #    dice_coeff = whole_slide_dice_coeff(path_to_model_weights,
 ##                                        image_ids=np.arange(18,20),
 #                                        data_shape=(584,565),
@@ -269,7 +269,7 @@ def main():
     whole_slide_predicted = whole_slide_prediction(path_to_model_weights,
                                                    image_id=image_id,
                                                    data_shape=(584,565),
-                                                   crop_shape=(64,64),
+                                                   crop_shape=(32,32),
                                                    nb_gpus=1,
                                                    batch_size=32,
                                                    )

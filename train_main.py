@@ -180,8 +180,8 @@ def train(train_ids=np.arange(20,38),
 #    callbacks.append(CSVLogger("log%03d.csv" % counter))
 #    callbacks.append(EarlyStopping(monitor='val_loss', min_delta=0.0001 , patience=patience))
     opt_generator = Adam(lr=1e-3, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
-#    model.compile(loss='binary_crossentropy', optimizer=opt_generator)
-    model_multi_gpu.compile(loss=seunet_main.mean_dice_coef_loss, optimizer=opt_generator)
+    model_multi_gpu.compile(loss='binary_crossentropy', optimizer=opt_generator)
+#    model_multi_gpu.compile(loss=seunet_main.mean_dice_coef_loss, optimizer=opt_generator)
     
     for epoch in range(1,epochs+1):
         model_multi_gpu.fit_generator(train_gen,
@@ -208,7 +208,7 @@ def main():
           data_size_per_epoch=2**14,
           epochs=256,
           data_shape=(584,565),
-          crop_shape=(64,64),
+          crop_shape=(32,32),
           nb_gpus=1
           )    
 if __name__ == '__main__':
