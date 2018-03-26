@@ -260,13 +260,13 @@ def whole_slide_accuracy(path_to_model_weights,
     path_to_mask = "../training/mask/%d_training_mask.gif" # % image_id
     
     #load prediction
-    whole_slide_prediction(path_to_model_weights,
-                           image_id=image_id,
-                           data_shape=data_shape,
-                           crop_shape=crop_shape,
-                           nb_gpus=nb_gpus,
-                           batch_size=batch_size,
-                           )    
+    prediction = whole_slide_prediction(path_to_model_weights,
+                                        image_id=image_id,
+                                        data_shape=data_shape,
+                                        crop_shape=crop_shape,
+                                        nb_gpus=nb_gpus,
+                                        batch_size=batch_size,
+                                        )    
     #load ground truth
     manual = np.load(path_to_train_manual % image_id)
     mask = np.load(path_to_mask % image_id)
