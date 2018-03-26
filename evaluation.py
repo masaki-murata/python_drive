@@ -249,10 +249,22 @@ def whole_slide_prediction(path_to_model_weights,
             
     return whole_slide_predicted*mask
 
-def whole_slide_accuracy():
+def whole_slide_accuracy(path_to_model_weights,
+                         image_ids,
+                         data_shape=(584,565),
+                         crop_shape=(64,64),
+                         nb_gpus=1,
+                         batch_size=32,
+                         ):
     
     #load prediction
-    
+    whole_slide_prediction(path_to_model_weights,
+                           image_id=image_id,
+                           data_shape=data_shape,
+                           crop_shape=crop_shape,
+                           nb_gpus=nb_gpus,
+                           batch_size=batch_size,
+                           )    
     #load ground truth
     
 def main():
