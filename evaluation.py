@@ -251,6 +251,9 @@ def whole_slide_prediction(path_to_model_weights,
 
 def whole_slide_accuracy():
     
+    #load prediction
+    
+    #load ground truth
     
 def main():
     image_id=39
