@@ -256,6 +256,8 @@ def whole_slide_accuracy(path_to_model_weights,
                          nb_gpus=1,
                          batch_size=32,
                          ):
+    path_to_train_manual = "../training/1st_manual/%d_manual1.gif" # % image_id
+    path_to_mask = "../training/mask/%d_training_mask.gif" # % image_id
     
     #load prediction
     whole_slide_prediction(path_to_model_weights,
@@ -266,6 +268,8 @@ def whole_slide_accuracy(path_to_model_weights,
                            batch_size=batch_size,
                            )    
     #load ground truth
+    manual = np.load(path_to_train_manual % image_id)
+    mask = np.load(path_to_mask % image_id)
     
 def main():
     image_id=39
