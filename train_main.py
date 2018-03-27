@@ -128,6 +128,8 @@ def train(train_ids=np.arange(20,38),
           epochs=256,
           data_shape=(584,565),
           crop_shape=(128,128),
+          filter_list_encoding=[],
+          filter_list_decoding=[],
           if_save_img=True,
           nb_gpus=1,
           ):
@@ -135,7 +137,7 @@ def train(train_ids=np.arange(20,38),
     steps_per_epoch=data_size_per_epoch//batch_size
     # set our model
     img_dims, output_dims = crop_shape+(3,), crop_shape+(1,)
-    model_single_gpu = seunet_model.seunet(img_dims, output_dims)
+    model_single_gpu = seunet_model.seunet(img_dims, output_dims, filter_list_encoding, filter_list_decoding)
     print(nb_gpus)
     if int(nb_gpus) > 1:
         model_multi_gpu = multi_gpu_model(model_single_gpu, gpus=nb_gpus)
@@ -246,12 +248,14 @@ def chose_hyperparam():
             hp_value["fnfilter_num_conv%d" % (x+1)] = hp_value["filter_num_conv%d" % x]
         if hp_value["filter_num_deconv%d" % (x+1)] > hp_value["filter_num_deconv%d" % x]:
             hp_value["fnfilter_num_deconv%d" % (x+1)] = hp_value["filter_num_deconv%d" % x]
-    hp_value["filter_conv"] = [hp_value["filter_num_conv%d" % x] for x in range(hp["conv_num"])]
-    hp_value["filter_deconv"] = [hp_value["filter_num_deconv%d" % x] for x in range(hp["conv_num"]-1)]
+    hp_value["filter_list_encoding"] = [hp_value["filter_num_conv%d" % x] for x in range(hp["conv_num"])]
+    hp_value["filter_list_decodng"] = [hp_value["filter_num_deconv%d" % x] for x in range(hp["conv_num"]-1)]
    
     return hp_value
 
 def main():
+    filter_list_encoding = [64, 64, 128, 128, 256, 256]
+    filter_list_decoding = [128, 128, 64, 64, 64]
     train(train_ids=np.arange(21,39),
           validation_ids=np.arange(39,41),
           val_data_size=2048,
@@ -260,6 +264,8 @@ def main():
           epochs=256,
           data_shape=(584,565),
           crop_shape=(64,64),
+          filter_list_encoding=filter_list_encoding,
+          filter_list_decoding=filter_list_decoding,
           if_save_img=True,
           nb_gpus=1
           )    
