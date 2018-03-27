@@ -9,7 +9,7 @@ Created on Thu Feb 22 21:22:59 2018
 import numpy as np
 from PIL import Image
 import os, datetime
-import seunet_model, seunet_main
+import seunet_model, seunet_main, evaluation
 from keras.optimizers import Adam
 from keras.callbacks import CSVLogger, EarlyStopping, ModelCheckpoint
 from keras.utils.training_utils import multi_gpu_model
@@ -22,7 +22,7 @@ from keras.backend.tensorflow_backend import set_session
 if os.name=='posix':
     config = tf.ConfigProto(
         gpu_options=tf.GPUOptions(
-            visible_device_list="2,3", # specify GPU number
+            visible_device_list="0,1", # specify GPU number
             allow_growth=True
         )
     )
@@ -119,7 +119,7 @@ def batch_iter(images=np.array([]), # (画像数、584, 565, 3)
             
 
 def train(train_ids=np.arange(20,38),
-          validation_ids=np.arange(18,20),
+          validation_ids=np.arange(39,41),
           val_data_size = 2048,
           batch_size=32,
           data_size_per_epoch=2**14,
@@ -147,7 +147,7 @@ def train(train_ids=np.arange(20,38),
 #        load_image_manual(image_ids=validation_ids,data_shape=data_shape,crop_shape=crop_shape)
     val_data, val_label = make_validation_dataset(validation_ids=validation_ids,
                                                   load = True,
-                                                  val_data_size = 2048,
+                                                  val_data_size = val_data_size,
                                                   data_shape=data_shape,
                                                   crop_shape=crop_shape,
                                                   )
@@ -198,7 +198,13 @@ def train(train_ids=np.arange(20,38),
             print(epoch)
             model_single_gpu.save(path_to_save_model % (epoch))
             model_single_gpu.save_weights(path_to_save_weights % (epoch))
-
+            evaluation.whole_slide_accuracy(model=model_multi_gpu,
+                                            image_ids=validation_ids,
+                                            data_shape=data_shape,
+                                            crop_shape=crop_shape,
+                                            nb_gpus=nb_gpus,
+                                            batch_size=batch_size,
+                                            )
 
 def main():
     train(train_ids=np.arange(21,39),

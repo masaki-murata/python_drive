@@ -206,7 +206,8 @@ def whole_slide_accuracy(path_to_model_weights,
     return true_sum / float(pixel_sum)
         
 
-def whole_slide_prediction(path_to_model_weights,
+def whole_slide_prediction(path_to_model_weights="",
+                           model="",
                            image_id=38,
                            data_shape=(584,565),
                            crop_shape=(64,64),
@@ -217,7 +218,8 @@ def whole_slide_prediction(path_to_model_weights,
     path_to_mask = "../training/mask/%d_training_mask.gif" # % image_id
     path_to_train_image = "../training/images/%d_training.tif" # % image_id
 
-    model = load_trained_seunet(path_to_model_weights, crop_shape, nb_gpus)
+    if model=="":
+        model = load_trained_seunet(path_to_model_weights, crop_shape, nb_gpus)
     
     image = np.array( Image.open(path_to_train_image % (image_id)) )
     mask = np.array( Image.open(path_to_mask % (image_id)) )
@@ -249,8 +251,9 @@ def whole_slide_prediction(path_to_model_weights,
             
     return whole_slide_predicted*mask
 
-def whole_slide_accuracy(path_to_model_weights,
-                         image_ids,
+def whole_slide_accuracy(path_to_model_weights="",
+                         model="",
+                         image_ids=[],
                          data_shape=(584,565),
                          crop_shape=(64,64),
                          nb_gpus=1,
@@ -259,17 +262,35 @@ def whole_slide_accuracy(path_to_model_weights,
     path_to_train_manual = "../training/1st_manual/%d_manual1.gif" # % image_id
     path_to_mask = "../training/mask/%d_training_mask.gif" # % image_id
     
-    #load prediction
-    prediction = whole_slide_prediction(path_to_model_weights,
-                                        image_id=image_id,
-                                        data_shape=data_shape,
-                                        crop_shape=crop_shape,
-                                        nb_gpus=nb_gpus,
-                                        batch_size=batch_size,
-                                        )    
-    #load ground truth
-    manual = np.load(path_to_train_manual % image_id)
-    mask = np.load(path_to_mask % image_id)
+    accuracy = np.zeros(len(image_ids))
+    for _id in range(len(image_ids)):
+        image_id = image_ids[_id]
+        #load prediction
+        prediction = whole_slide_prediction(path_to_model_weights=path_to_model_weights,
+                                            model=model,
+                                            image_id=image_id,
+                                            data_shape=data_shape,
+                                            crop_shape=crop_shape,
+                                            nb_gpus=nb_gpus,
+                                            batch_size=batch_size,
+                                            )    
+        #load ground truth
+        manual = np.array( Image.open(path_to_train_manual % (image_id)) )
+        manual[manual>0]=1
+        mask = np.array( Image.open(path_to_mask % (image_id)) )
+        mask[mask>0]=1
+        
+        
+        # しきい値処理
+        prediction[prediction>=0.5]=1
+        prediction[prediction<0.5]=0
+        
+        accuracy[_id] = prediction[(prediction==manual) & (mask>0)].size / float( manual[mask>0].size )
+    
+    accuracy_average = accuracy.sum() / float(accuracy.size)
+    
+    return accuracy_average
+    
     
 def main():
     image_id=39
