@@ -212,6 +212,7 @@ def whole_slide_prediction(path_to_model_weights="",
                            data_shape=(584,565),
                            crop_shape=(64,64),
                            nb_gpus=1,
+                           if_save_img=True,
                            batch_size=32,
                            ):
 
@@ -248,14 +249,23 @@ def whole_slide_prediction(path_to_model_weights="",
                 x = data_shape[1]-crop_shape[1]
             whole_slide_predicted[y:y+crop_shape[0], x:x+crop_shape[1]] = crop_predicted[count].reshape(crop_shape)
             count += 1
+    
+    whole_slide_predicted = whole_slide_predicted*mask
+
+    if if_save_img:
+        if not os.path.exists(path_to_model_weights[:-3]+'/'):
+            os.makedirs(path_to_model_weights[:-3]+'/')
+        plt.imshow(whole_slide_predicted)
+        plt.savefig(path_to_model_weights[:-3]+'/'+str(image_id)+'.png')
             
-    return whole_slide_predicted*mask
+    return whole_slide_predicted
 
 def whole_slide_accuracy(path_to_model_weights="",
                          model="",
                          image_ids=[],
                          data_shape=(584,565),
                          crop_shape=(64,64),
+                         if_save_img = True,
                          nb_gpus=1,
                          batch_size=32,
                          ):
@@ -272,6 +282,7 @@ def whole_slide_accuracy(path_to_model_weights="",
                                             data_shape=data_shape,
                                             crop_shape=crop_shape,
                                             nb_gpus=nb_gpus,
+                                            if_save_img=if_save_img,
                                             batch_size=batch_size,
                                             )    
         #load ground truth

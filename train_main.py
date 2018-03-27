@@ -127,6 +127,7 @@ def train(train_ids=np.arange(20,38),
           epochs=256,
           data_shape=(584,565),
           crop_shape=(128,128),
+          if_save_img=True,
           nb_gpus=1,
           ):
     
@@ -198,23 +199,27 @@ def train(train_ids=np.arange(20,38),
             print(epoch)
             model_single_gpu.save(path_to_save_model % (epoch))
             model_single_gpu.save_weights(path_to_save_weights % (epoch))
-            evaluation.whole_slide_accuracy(model=model_multi_gpu,
-                                            image_ids=validation_ids,
-                                            data_shape=data_shape,
-                                            crop_shape=crop_shape,
-                                            nb_gpus=nb_gpus,
-                                            batch_size=batch_size,
-                                            )
+            validation_accuracy = evaluation.whole_slide_accuracy(path_to_model_weights=path_to_save_weights % (epoch),
+                                                                  model=model_multi_gpu,
+                                                                  image_ids=validation_ids,
+                                                                  data_shape=data_shape,
+                                                                  crop_shape=crop_shape,
+                                                                  if_save_img=if_save_img,
+                                                                  nb_gpus=nb_gpus,
+                                                                  batch_size=batch_size,
+                                                                  )
+            print("validation_accuracy = ", validation_accuracy)
 
 def main():
     train(train_ids=np.arange(21,39),
           validation_ids=np.arange(39,41),
-          val_data_size = 2048,
+          val_data_size=2048,
           batch_size=32,
           data_size_per_epoch=2**14,
           epochs=256,
           data_shape=(584,565),
           crop_shape=(32,32),
+          if_save_img=True,
           nb_gpus=1
           )    
 if __name__ == '__main__':
