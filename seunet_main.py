@@ -14,9 +14,6 @@ def dice_coef(y_true, y_pred):
     return (2. * intersection +1) / (K.sum(y_true_f) + K.sum(y_pred_f) + 1.)
 
 def dice_coef2(y_true, y_pred):
-    y_true_f = K.flatten(y_true)
-    y_pred_f = K.flatten(y_pred)
-    intersection = K.sum(y_true_f * y_pred_f)
     return 0.5*dice_coef(y_true, y_pred) + 0.5*dice_coef(1-y_true, 1-y_pred)
 
 
