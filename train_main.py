@@ -15,6 +15,7 @@ from keras.callbacks import CSVLogger, EarlyStopping, ModelCheckpoint
 from keras.utils.training_utils import multi_gpu_model
 import keras.backend as K
 import shutil
+import math
 
 
 import tensorflow as tf
@@ -210,6 +211,46 @@ def train(train_ids=np.arange(20,38),
                                                                   )
             print("validation_accuracy = ", validation_accuracy)
 
+def dict_hyperparam():
+    hp = {}
+    hp["learning_rate"] = list(range(1,7))
+    hp["momentum"] = [0, 0.99]
+    hp["optimizer"] = ["SGD", "Adam"]
+    hp["batch_size"] = [2**x for x in range(3,6)] #[2**5, 2**6, 2**7, 2**8, 2**9, 2**10, 2**11] #[2**x for x in range(6)]
+    hp["crop_shape"] = [2**x for x in range(4,10)]    
+    
+    conv_num_max = 8
+    hp["conv_num"] = list(range(4,conv_num_max+1))
+    for conv_id in range(conv_num_max):
+        hp["filter_num_conv%d" % conv_id] = [2**x for x in range(4,8)]
+        hp["filter_num_deconv%d" % conv_id] = [2**x for x in range(4,8)]
+
+    return hp
+
+# ハイパーパラメータをランダムに選択
+def chose_hyperparam():
+    hp = dict_hyperparam()
+    hp_value = {}
+    for hyperparam in hp.keys():
+        rp = np.random.rand()
+        index = int( math.floor( rp*len(hp[hyperparam]) ) )
+        hp_value[hyperparam] = hp[hyperparam][index]
+#        if hyperparam == "conv_layer_num" and hp_value[hyperparam]==2:            
+#                hp["dense_units1"] = list(range(2,(voi_width//2//2)))
+            
+    
+    hp_value["learning_rate"] = 10**(-hp_value["learning_rate"] )
+    
+    for x in range(1, hp["conv_num"]):
+        if hp_value["filter_num_conv%d" % (x+1)] < hp_value["filter_num_conv%d" % x]:
+            hp_value["fnfilter_num_conv%d" % (x+1)] = hp_value["filter_num_conv%d" % x]
+        if hp_value["filter_num_deconv%d" % (x+1)] > hp_value["filter_num_deconv%d" % x]:
+            hp_value["fnfilter_num_deconv%d" % (x+1)] = hp_value["filter_num_deconv%d" % x]
+    hp_value["filter_conv"] = [hp_value["filter_num_conv%d" % x] for x in range(hp["conv_num"])]
+    hp_value["filter_deconv"] = [hp_value["filter_num_deconv%d" % x] for x in range(hp["conv_num"]-1)]
+   
+    return hp_value
+
 def main():
     train(train_ids=np.arange(21,39),
           validation_ids=np.arange(39,41),
@@ -218,7 +259,7 @@ def main():
           data_size_per_epoch=2**14,
           epochs=256,
           data_shape=(584,565),
-          crop_shape=(32,32),
+          crop_shape=(64,64),
           if_save_img=True,
           nb_gpus=1
           )    
