@@ -261,7 +261,7 @@ def main():
           val_data_size=2048,
           batch_size=32,
           data_size_per_epoch=2**14,
-          epochs=1, #256,
+          epochs=128, #256,
           data_shape=(584,565),
           crop_shape=(128,128),
           filter_list_encoding=filter_list_encoding,
