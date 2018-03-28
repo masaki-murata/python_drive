@@ -198,7 +198,7 @@ def train(train_ids=np.arange(20,38),
         print('Epoch %s/%s done' % (epoch, epochs))
         print("")
         
-        if epoch>0 and epoch % 32==0:
+        if epoch>0 and epoch % 1==0:
             print(epoch)
             model_single_gpu.save(path_to_save_model % (epoch))
             model_single_gpu.save_weights(path_to_save_weights % (epoch))
@@ -261,7 +261,7 @@ def main():
           val_data_size=2048,
           batch_size=32,
           data_size_per_epoch=2**14,
-          epochs=256,
+          epochs=1, #256,
           data_shape=(584,565),
           crop_shape=(128,128),
           filter_list_encoding=filter_list_encoding,

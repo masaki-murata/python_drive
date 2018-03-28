@@ -21,15 +21,15 @@ from keras import regularizers
 
 
 
-def attetion(x):
-
-    feature_map = x[0]
-    coef = x[1]
-    coef = K.expand_dims(K.expand_dims(coef, axis=-2) ,axis=-2)
-
-    x = coef*feature_map
-
-    return x
+#def attention(x):
+#
+#    feature_map = x[0]
+#    coef = x[1]
+#    coef = K.expand_dims(K.expand_dims(coef, axis=-2) ,axis=-2)
+#
+#    x = coef*feature_map
+#
+#    return x
 
 
 def conv_block_unet(x, f, strides=(2,2)):
@@ -45,6 +45,16 @@ def conv_block_unet(x, f, strides=(2,2)):
 
 def up_conv_block_seunet(x, x2, f, dropout=False):
 
+    def attention(x):
+    
+        feature_map = x[0]
+        coef = x[1]
+        coef = K.expand_dims(K.expand_dims(coef, axis=-2) ,axis=-2)
+    
+        x = coef*feature_map
+    
+        return x
+
     x = UpSampling2D(size=(2, 2))(x)
 
     channels_nb = K.int_shape(x2)[-1]
@@ -58,7 +68,7 @@ def up_conv_block_seunet(x, x2, f, dropout=False):
     x3 = Dense(channels_nb_bottleneck, activation='relu')(x3)
     x3 = Dense(channels_nb, activation='sigmoid', activity_regularizer=regularizers.l1(0.01))(x3)
 
-    y = Lambda(lambda x: attetion(x))([x2, x3])
+    y = Lambda(lambda x: attention(x))([x2, x3])
 
     x = Concatenate(axis=-1)([x, y])
 
@@ -77,6 +87,16 @@ def up_conv_block_seunet(x, x2, f, dropout=False):
 
 def seunet(img_dims, output_dims, filter_list_encoding, filter_list_decoding):
 
+    def attention(x):
+    
+        feature_map = x[0]
+        coef = x[1]
+        coef = K.expand_dims(K.expand_dims(coef, axis=-2) ,axis=-2)
+    
+        x = coef*feature_map
+    
+        return x
+    
     filter_list =  filter_list_encoding #[32, 32, 64, 128, 128] #[64, 64, 128, 128, 256, 256]  
 
     unet_input = Input(shape=img_dims)
