@@ -254,8 +254,8 @@ def chose_hyperparam():
     return hp_value
 
 def main():
-    filter_list_encoding = [64, 64, 128, 128, 256, 256]
-    filter_list_decoding = [128, 128, 64, 64, 64]
+    filter_list_encoding = [64, 64, 128, 128, 256, 256, 512]
+    filter_list_decoding = [256, 128, 128, 64, 64, 64]
     train(train_ids=np.arange(21,39),
           validation_ids=np.arange(39,41),
           val_data_size=2048,
@@ -263,7 +263,7 @@ def main():
           data_size_per_epoch=2**14,
           epochs=256,
           data_shape=(584,565),
-          crop_shape=(64,64),
+          crop_shape=(128,128),
           filter_list_encoding=filter_list_encoding,
           filter_list_decoding=filter_list_decoding,
           if_save_img=True,
