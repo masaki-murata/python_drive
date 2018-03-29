@@ -176,8 +176,12 @@ def train(train_ids=np.arange(20,38),
     path_to_code_moved = path_to_cnn + "train_main_used.py"
     path_to_save_model = path_to_cnn + "model_epoch=%03d.h5"
     path_to_save_weights = path_to_cnn + "weights_epoch=%03d.h5"
+    path_to_save_filter_list = path_to_cnn + "filter_list_%s.npy" # % encoding or decoding
     
     shutil.copyfile(path_to_code, path_to_code_moved)
+    
+    np.save(path_to_save_filter_list % encoding, filter_list_encoding)
+    np.save(path_to_save_filter_list % decoding, filter_list_decoding)
     
 #    callbacks = []
 #    callbacks.append(ModelCheckpoint(path_to_save_model, monitor='val_loss', save_best_only=False))
@@ -216,8 +220,9 @@ def train(train_ids=np.arange(20,38),
 def dict_hyperparam():
     hp = {}
     hp["learning_rate"] = list(range(1,7))
-    hp["momentum"] = [0, 0.99]
+#    hp["momentum"] = [0, 0.99]
     hp["optimizer"] = ["SGD", "Adam"]
+    hp["loss"] = ["binary_crossentropy", "mean_dice_coef_loss"]
     hp["batch_size"] = [2**x for x in range(3,6)] #[2**5, 2**6, 2**7, 2**8, 2**9, 2**10, 2**11] #[2**x for x in range(6)]
     hp["crop_shape"] = [2**x for x in range(4,10)]    
     
@@ -252,6 +257,89 @@ def chose_hyperparam():
     hp_value["filter_list_decodng"] = [hp_value["filter_num_deconv%d" % x] for x in range(hp["conv_num"]-1)]
    
     return hp_value
+
+
+def make_cnn(hp_value):
+    crop_shape = hp_value["crop_shape"]
+    # set our model
+    img_dims, output_dims = crop_shape+(3,), crop_shape+(1,)
+    model_single_gpu = seunet_model.seunet(img_dims, output_dims, filter_list_encoding=hp_value["filter_list_encoding"], filter_list_decoding=hp_value["filter_list_decodng"])
+    print(nb_gpus)
+    if int(nb_gpus) > 1:
+        model_multi_gpu = multi_gpu_model(model_single_gpu, gpus=nb_gpus)
+    else:
+        model_multi_gpu = model_single_gpu
+    
+    return model_multi_gpu
+
+
+def random_search(iteration_num=1,
+                  path_to_cnn_format = "./cnn/mm%02ddd%02d_%02d/", # % (now.month, now.day, count)
+                  train_ids,
+                  data_size_per_epoch=2**14,
+                  validation_ids=np.array([39,40]),
+                  data_shape=(584,565),
+                  nb_gpus=1,
+#                  patience = 2,
+#                  epoch_num_fix = 0,
+                  ):
+    hp_value = chose_hyperparam()
+    crop_shape = hp_value["crop_shape"]
+    batch_size = hp_value["batch_size"]
+    model = make_cnn(hp_value)
+    steps_per_epoch=data_size_per_epoch//batch_size
+
+    # load data
+    train_images, train_manuals = load_image_manual(image_ids=train_ids,data_shape=data_shape)
+#    validation_images, validation_manuals = \
+#        load_image_manual(image_ids=validation_ids,data_shape=data_shape,crop_shape=crop_shape)
+    val_data, val_label = make_validation_dataset(validation_ids=validation_ids,
+                                                  load = True,
+                                                  val_data_size = val_data_size,
+                                                  data_shape=data_shape,
+                                                  crop_shape=crop_shape,
+                                                  )
+        
+    train_gen = batch_iter(images=train_images,
+                           manuals=train_manuals, 
+                           crop_shape=crop_shape,
+                           steps_per_epoch=steps_per_epoch,
+                           batch_size=batch_size,
+                           )
+    if hp_value["loss"] == "binary_crossentropy":
+        loss = 'binary_crossentropy'
+    elif hp_value["loss"] == "mean_dice_coef_loss":
+        loss = seunet_main.mean_dice_coef_loss
+    opt_generator = Adam(lr=hp_value["learning_rate"], beta_1=0.9, beta_2=0.999, epsilon=1e-08)
+    model_multi_gpu.compile(loss=loss, optimizer=opt_generator)
+
+
+    for epoch in range(1,epochs+1):
+        model_multi_gpu.fit_generator(train_gen,
+                                      steps_per_epoch=steps_per_epoch,
+                                      epochs=1,
+#                                      epochs=epochs,
+#                                      callbacks=callbacks,
+                                      validation_data=(val_data,val_label)
+                                      )
+        print('Epoch %s/%s done' % (epoch, epochs))
+        print("")
+        
+        if epoch>0 and epoch % 1==0:
+            print(epoch)
+            model_single_gpu.save(path_to_save_model % (epoch))
+            model_single_gpu.save_weights(path_to_save_weights % (epoch))
+            validation_accuracy = evaluation.whole_slide_accuracy(path_to_model_weights=path_to_save_weights % (epoch),
+                                                                  model=model_multi_gpu,
+                                                                  image_ids=validation_ids,
+                                                                  data_shape=data_shape,
+                                                                  crop_shape=crop_shape,
+                                                                  if_save_img=if_save_img,
+                                                                  nb_gpus=nb_gpus,
+                                                                  batch_size=batch_size,
+                                                                  )
+            print("validation_accuracy = ", validation_accuracy)
+
 
 def main():
     filter_list_encoding = [64, 64, 128, 128, 256, 256, 512]
