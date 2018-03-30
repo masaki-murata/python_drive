@@ -25,8 +25,8 @@ def load_trained_seunet(path_to_cnn,
                         nb_gpus,
                         ):
     path_to_model_weights = "weights_epoch=%03d.h5" % epoch
-    filter_list_encoding = np.load(path_to_save_filter_list % encoding)
-    filter_list_decoding = np.load(path_to_save_filter_list % decoding)
+    filter_list_encoding = np.load(path_to_save_filter_list % "encoding")
+    filter_list_decoding = np.load(path_to_save_filter_list % "decoding")
     
     img_dims, output_dims = crop_shape+(3,), crop_shape+(1,)
     model_single_gpu = seunet_model.seunet(img_dims, output_dims, filter_list_encoding, filter_list_decoding)
@@ -223,7 +223,7 @@ def whole_slide_prediction(path_to_cnn,
                            batch_size=32,
                            ):
 
-    path_to_model_weights = "weights_epoch=%03d.h5" % epoch
+    path_to_model_weights = path_to_cnn+"weights_epoch=%03d.h5" % epoch
     path_to_mask = "../training/mask/%d_training_mask.gif" # % image_id
     path_to_train_image = "../training/images/%d_training.tif" # % image_id
 

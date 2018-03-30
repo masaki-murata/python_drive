@@ -180,16 +180,16 @@ def train(train_ids=np.arange(20,38),
     
     shutil.copyfile(path_to_code, path_to_code_moved)
     
-    np.save(path_to_save_filter_list % encoding, filter_list_encoding)
-    np.save(path_to_save_filter_list % decoding, filter_list_decoding)
+    np.save(path_to_save_filter_list % "encoding", filter_list_encoding)
+    np.save(path_to_save_filter_list % "decoding", filter_list_decoding)
     
 #    callbacks = []
 #    callbacks.append(ModelCheckpoint(path_to_save_model, monitor='val_loss', save_best_only=False))
 #    callbacks.append(CSVLogger("log%03d.csv" % counter))
 #    callbacks.append(EarlyStopping(monitor='val_loss', min_delta=0.0001 , patience=patience))
     opt_generator = Adam(lr=1e-3, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
-    model_multi_gpu.compile(loss='binary_crossentropy', optimizer=opt_generator)
-#    model_multi_gpu.compile(loss=seunet_main.mean_dice_coef_loss, optimizer=opt_generator)
+#    model_multi_gpu.compile(loss='binary_crossentropy', optimizer=opt_generator)
+    model_multi_gpu.compile(loss=seunet_main.mean_dice_coef_loss, optimizer=opt_generator)
     
     for epoch in range(1,epochs+1):
         model_multi_gpu.fit_generator(train_gen,
@@ -206,7 +206,8 @@ def train(train_ids=np.arange(20,38),
             print(epoch)
             model_single_gpu.save(path_to_save_model % (epoch))
             model_single_gpu.save_weights(path_to_save_weights % (epoch))
-            validation_accuracy = evaluation.whole_slide_accuracy(path_to_model_weights=path_to_save_weights % (epoch),
+            validation_accuracy = evaluation.whole_slide_accuracy(path_to_cnn=path_to_cnn,
+                                                                  epoch=epoch,
                                                                   model=model_multi_gpu,
                                                                   image_ids=validation_ids,
                                                                   data_shape=data_shape,
@@ -221,7 +222,7 @@ def dict_hyperparam():
     hp = {}
     hp["learning_rate"] = list(range(1,7))
 #    hp["momentum"] = [0, 0.99]
-    hp["optimizer"] = ["SGD", "Adam"]
+#    hp["optimizer"] = ["SGD", "Adam"]
     hp["loss"] = ["binary_crossentropy", "mean_dice_coef_loss"]
     hp["batch_size"] = [2**x for x in range(3,6)] #[2**5, 2**6, 2**7, 2**8, 2**9, 2**10, 2**11] #[2**x for x in range(6)]
     hp["crop_shape"] = [2**x for x in range(4,10)]    
@@ -275,7 +276,7 @@ def make_cnn(hp_value):
 
 def random_search(iteration_num=1,
                   path_to_cnn_format = "./cnn/mm%02ddd%02d_%02d/", # % (now.month, now.day, count)
-                  train_ids,
+                  train_ids=np.arange(21,39),
                   data_size_per_epoch=2**14,
                   validation_ids=np.array([39,40]),
                   data_shape=(584,565),
